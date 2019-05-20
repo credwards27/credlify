@@ -1,0 +1,39 @@
+{
+  "name": "credify",
+  "version": "0.0.1",
+  "description": "A simple scaffolding helper for node projects",
+  "main": "credify.js",
+  "engines": {
+    "node": ">= 12.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "credify": "./credify.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/credwards27/credify.git"
+  },
+  "author": "credwards27",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/credwards27/credify/issues"
+  },
+  "homepage": "https://github.com/credwards27/credify#readme",
+  "keywords": [
+    "scaffolding",
+    "scaffold",
+    "boilerplate",
+    "init",
+    "initialize",
+    "project",
+    "gulp",
+    "electron",
+    "webpack",
+    "babel",
+    "create",
+    "setup"
+  ]
+}
