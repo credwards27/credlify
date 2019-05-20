@@ -35,5 +35,10 @@
     "babel",
     "create",
     "setup"
-  ]
+  ],
+  "devDependencies": {
+    "minimist": "~1.2.0",
+    "minimist-options": "~4.0.1",
+    "prompt": "~1.0.0"
+  }
 }
