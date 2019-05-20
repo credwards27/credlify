@@ -121,12 +121,14 @@ function sanitizeRelPath(path) {
 /* Creates the directory structure for the project.
     
     rootPath - Root project directory path.
-    data - User input data for project configuration.
+    input - User input data for project configuration.
 */
-function createProject(rootPath, data) {
+function createProject(rootPath, input) {
     rootPath = "/" + sanitizeRelPath(rootPath);
     
     // Copy template files with custom user data
+    console.log("Creating build pipeline files...");
+    
     for (let i=0, l=TEMPLATES.length; i<l; ++i) {
         ((file) => {
             let tplFile = TPL_PATH + "/" + file;
@@ -134,6 +136,8 @@ function createProject(rootPath, data) {
             // Copy template file into project
             fs.readFile(tplFile, { encoding: "utf8" }, (err, data) => {
                 let destFile = rootPath + "/" + file;
+                
+                data = replaceValues(data, input);
                 
                 fs.writeFile(
                     destFile,
@@ -160,11 +164,33 @@ function createProject(rootPath, data) {
                             }
                             
                             console.error(msg);
+                            return;
                         }
+                        
+                        console.log("Created: " + file);
                     })
             });
         })(TEMPLATES[i]);
     }
+}
+
+/* Replaces special placeholders in a string with given values.
+    
+    str - String containing placeholders. Placeholders must be in the following
+        format: '%%[placeholderName]%%'. Placeholder names may only contain
+        letters, number, underscores, hyphens, and periods, and are case
+        sensitive.
+    
+    values - Replacement values, keyed by placeholder names.
+    
+    Returns the string with replaced values.
+*/
+function replaceValues(str, values) {
+    str = str.replace(/%%\[([A-Za-z0-9._-]+)\]%%/g, (match, placeholder) => {
+        return values.hasOwnProperty(placeholder) ? values[placeholder] : match;
+    });
+    
+    return str;
 }
 
 //

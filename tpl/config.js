@@ -10,25 +10,25 @@ const CONFIG = {
         // Source paths.
         SRC: {
             // Generic build source path root.
-            ROOT: "src",
+            ROOT: "%%[src]%%",
             
             // SASS build source path.
-            SASS: "sass",
+            SASS: "%%[srcSass]%%",
             
             // JS build source path.
-            JS: "js"
+            JS: "%%[srcJs]%%"
         },
         
         // Destination output paths.
         DEST: {
             // Generic build output path root.
-            ROOT: "dist",
+            ROOT: "%%[dest]%%",
             
             // SASS build output path.
-            SASS: "assets/css",
+            SASS: "%%[destSass]%%",
             
             // JS build output path.
-            JS: "assets/js"
+            JS: "%%[destJs]%%"
         }
     }
 };
