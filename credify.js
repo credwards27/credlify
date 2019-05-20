@@ -123,9 +123,16 @@ function sanitizeRelPath(path) {
     rootPath - Root project directory path.
     input - User input data for project configuration.
 */
-function createProject(rootPath, input) {
-    rootPath = "/" + sanitizeRelPath(rootPath);
+async function createProject(rootPath, input) {
+    await copyTemplateFiles(rootPath, input);
+}
+
+/* Copies template files into the project.
     
+    rootPath - See createProject().
+    input - See createProject().
+*/
+async function copyTemplateFiles(rootPath, input) {
     // Copy template files with custom user data
     console.log("Creating build pipeline files...");
     
@@ -235,13 +242,17 @@ function replaceValues(str, values) {
                     
                     prompt.start();
                     
-                    prompt.get(userInput, (err, results) => {
+                    prompt.get(userInput, async (err, results) => {
                         if (err) {
                             console.error("An unknown error occurred");
                             return;
                         }
                         
-                        createProject(rootPath, results);
+                        // Create the project
+                        await createProject(
+                            "/" + sanitizeRelPath(rootPath),
+                            results
+                        );
                     });
                 }
             });
