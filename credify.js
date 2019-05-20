@@ -129,6 +129,8 @@ function sanitizeRelPath(path) {
 */
 async function createProject(rootPath, input) {
     await copyTemplateFiles(rootPath, input);
+    await createStructure(rootPath, input);
+    await installDeps();
 }
 
 /* Copies template files into the project.
@@ -189,6 +191,19 @@ async function copyTemplateFiles(rootPath, input) {
         
         console.log("Created: " + file);
     }
+}
+
+/* Creates the base project structure.
+    
+    rootPath - See createProject().
+    input - See createProject().
+*/
+async function createStructure(rootPath, input) {
+}
+
+/* Installs package dependencies.
+*/
+async function installDeps() {
 }
 
 /* Replaces special placeholders in a string with given values.
