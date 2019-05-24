@@ -13,6 +13,10 @@ const minimist = require("minimist"),
     prompt = require("prompt"),
     fs = require("fs"),
     path = require("path"),
+    promisify = require("util").promisify,
+    
+    readFileAsync = promisify(fs.readFile),
+    writeFileAsync = promisify(fs.writeFile),
     
     // Template directory path.
     TPL_PATH = __dirname + "/tpl",
@@ -137,47 +141,53 @@ async function copyTemplateFiles(rootPath, input) {
     console.log("Creating build pipeline files...");
     
     for (let i=0, l=TEMPLATES.length; i<l; ++i) {
-        ((file) => {
-            let tplFile = TPL_PATH + "/" + file;
-            
-            // Copy template file into project
-            fs.readFile(tplFile, { encoding: "utf8" }, (err, data) => {
-                let destFile = rootPath + "/" + file;
-                
-                data = replaceValues(data, input);
-                
-                fs.writeFile(
-                    destFile,
-                    data,
-                    {
-                        encoding: "utf8",
-                        mode: 0o644,
-                        flag: "wx"
-                    },
-                    (err) => {
-                        // Show error message if file could not be copied
-                        if (err) {
-                            let msg;
-                            
-                            switch (err.code) {
-                                case "EEXIST":
-                                msg = "File at '" + destFile + "' already " +
-                                    "exists";
-                                break;
-                                
-                                default:
-                                msg = "Could not create file at '" + destFile +
-                                    "'";
-                            }
-                            
-                            console.error(msg);
-                            return;
-                        }
-                        
-                        console.log("Created: " + file);
-                    })
+        let file = TEMPLATES[i],
+            tplFile = TPL_PATH + "/" + file,
+            destFile = rootPath + "/" + file,
+            data;
+        
+        // Read the template file
+        try {
+            data = await readFileAsync(
+                tplFile, { encoding: "utf8" }
+            );
+        }
+        catch (e) {
+            // Skip file if a read error occurred
+            console.error("Template file '" + file + "' could not be copied");
+            continue;
+        }
+        
+        data = replaceValues(data, input);
+        
+        // Copy the modified template file into the project
+        try {
+            await writeFileAsync(destFile, data, {
+                encoding: "utf8",
+                mode: 0o644,
+                flag: "wx"
             });
-        })(TEMPLATES[i]);
+        }
+        catch (e) {
+            // File could not be written
+            let msg;
+            
+            switch (e.code) {
+                case "EEXIST":
+                msg = "File at '" + destFile + "' already " +
+                    "exists";
+                break;
+                
+                default:
+                msg = "Could not create file at '" + destFile +
+                    "'";
+            }
+            
+            console.error(msg);
+            continue;
+        }
+        
+        console.log("Created: " + file);
     }
 }
 
