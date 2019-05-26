@@ -11,12 +11,14 @@
 const minimist = require("minimist"),
     minimistOpts = require("minimist-options"),
     prompt = require("prompt"),
+    uuid = require("uuid/v4"),
     fs = require("fs"),
     path = require("path"),
     promisify = require("util").promisify,
     
     readFileAsync = promisify(fs.readFile),
     writeFileAsync = promisify(fs.writeFile),
+    unlinkAsync = promisify(fs.unlink),
     
     // Template directory path.
     TPL_PATH = __dirname + "/tpl",
@@ -108,6 +110,9 @@ const minimist = require("minimist"),
         }
     };
 
+// Config data module (required at runtime).
+var CONFIG = null;
+
 /* Sanitizes a relative path string.
     
     path - Path string to sanitize.
@@ -176,20 +181,56 @@ async function copyTemplateFiles(rootPath, input) {
             
             switch (e.code) {
                 case "EEXIST":
-                msg = "File at '" + destFile + "' already " +
-                    "exists";
+                msg = "File at '" + destFile + "' already exists";
                 break;
                 
                 default:
-                msg = "Could not create file at '" + destFile +
-                    "'";
+                msg = "Could not create file at '" + destFile + "'";
             }
             
             console.error(msg);
-            continue;
         }
         
-        console.log("Created: " + file);
+        // Create temporary config file to load for this script
+        if ("config.js" === file) {
+            let uuidConfig = rootPath + "/config-" + uuid() + ".js";
+            
+            try {
+                await writeFileAsync(uuidConfig, data, {
+                    encoding: "utf8",
+                    mode: 0o644,
+                    flag: "wx"
+                });
+                
+                CONFIG = require(uuidConfig);
+            }
+            catch (e) {
+                // Temporary config file could not be written
+                let msg;
+                
+                switch (e.code) {
+                    case "EEXIST":
+                    msg = "File at '" + uuidConfig + "' already exists (the " +
+                        "chances of this are monumentally small, try running " +
+                        "the script again)";
+                    break;
+                    
+                    default:
+                    msg = "Could not create temporary config file at '" +
+                        uuidConfig + "'";
+                    
+                    console.error(msg);
+                }
+            }
+            
+            try {
+                await unlinkAsync(uuidConfig);
+            }
+            catch (e) {
+                console.error("Temporary config file at '" + uuidConfig +
+                    "' could not be deleted, and must be removed manually");
+            }
+        }
     }
 }
 

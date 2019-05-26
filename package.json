@@ -39,6 +39,7 @@
   "dependencies": {
     "minimist": "~1.2.0",
     "minimist-options": "~4.0.1",
-    "prompt": "~1.0.0"
+    "prompt": "~1.0.0",
+    "uuid": "~3.3.2"
   }
 }
