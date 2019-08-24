@@ -14,6 +14,7 @@ const minimist = require("minimist"),
     uuid = require("uuid/v4"),
     fs = require("fs"),
     path = require("path"),
+    spawn = require("child_process").spawn,
     promisify = require("util").promisify,
     
     readFileAsync = promisify(fs.readFile),
@@ -28,6 +29,40 @@ const minimist = require("minimist"),
     TEMPLATES = fs.readdirSync(TPL_PATH).map((file) => {
         return sanitizeRelPath(file);
     }),
+    
+    // NPM development dependencies to install.
+    PACKAGES = {
+        deps: [
+            "@babel/runtime"
+        ],
+        
+        devDeps: [
+            "@babel/core",
+            "@babel/plugin-proposal-class-properties",
+            "@babel/plugin-proposal-export-default-from",
+            "@babel/plugin-proposal-object-rest-spread",
+            "@babel/plugin-syntax-dynamic-import",
+            "@babel/plugin-transform-async-to-generator",
+            "@babel/plugin-transform-runtime",
+            "@babel/preset-env",
+            "@babel/register",
+            "babel-loader",
+            "babel-minify-webpack-plugin",
+            "babel-plugin-root-import",
+            "del",
+            "gulp",
+            "gulp-clean-css",
+            "gulp-load-plugins",
+            "gulp-plumber",
+            "gulp-sass",
+            "gulp-sourcemaps",
+            "live-server",
+            "minimist",
+            "minimist-options",
+            "webpack",
+            "webpack-stream"
+        ]
+    },
     
     // CLI argument configuration.
     ARG_OPTS = {},
@@ -311,6 +346,53 @@ async function createStructure(rootPath, config, input) {
 /* Installs package dependencies.
 */
 async function installDeps() {
+    console.log("Installing dependencies...");
+    
+    let promise;
+    
+    for (let k in PACKAGES) {
+        if (!PACKAGES.hasOwnProperty(k)) { continue; }
+        
+        let packages = PACKAGES[k],
+            args = [ "install" ],
+            command, handler;
+        
+        // Build arguments array
+        args.push("devDeps" === k ? "--save-dev" : "--save");
+        args = args.concat(packages);
+        
+        // Run the install command
+        command = spawn(
+            "win32" === process.platform ? "npm.cmd" : "npm",
+            args,
+            {
+                stdio: [
+                    process.stdin,
+                    process.stdout,
+                    process.stderr
+                ]
+            }
+        );
+        
+        // Set up promise handler
+        handler = (res) => {
+            command.on("close", (code) => {
+                res(code);
+            });
+        };
+        
+        // Cache or chain the promise
+        if (!promise) {
+            promise = new Promise(handler);
+        }
+        else {
+            promise.then(() => {
+                return new Promise(handler);
+            });
+        }
+    }
+    
+    return promise;
 }
 
 /* Replaces special placeholders in a string with given values.
