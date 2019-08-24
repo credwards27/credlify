@@ -217,8 +217,7 @@ async function copyTemplateFiles(rootPath, input) {
     for (let i=0, l=TEMPLATES.length; i<l; ++i) {
         let file = TEMPLATES[i],
             tplFile = TPL_PATH + "/" + file,
-            destFile = rootPath + "/" + file,
-            data;
+            destFile, data;
         
         // Read the template file
         try {
@@ -236,6 +235,9 @@ async function copyTemplateFiles(rootPath, input) {
         
         // Copy the modified template file into the project
         try {
+            file = file.replace(/^_/, "");
+            destFile = rootPath + "/" + file;
+            
             await writeFileAsync(destFile, data, {
                 encoding: "utf8",
                 mode: 0o644,
