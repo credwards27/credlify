@@ -84,7 +84,7 @@ gulp.task("js", () => {
     
     return action;
 });
-
+%%[serverTask]%%
 // Complete build task.
 gulp.task(
     "build",

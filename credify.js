@@ -107,6 +107,15 @@ const minimist = require("minimist"),
                 required: true,
                 before: sanitizeRelPath
             },
+            
+            serverTask: {
+                description: "Add optional live server gulp task ('yes' or " +
+                    "'no')",
+                type: "string",
+                default: "yes",
+                pattern: /^(y|n|yes|no)$/i,
+                message: "Choose 'yes' or 'no'"
+            }
         }
     };
 
@@ -312,6 +321,32 @@ function replaceValues(str, values) {
                         if (err) {
                             console.error("An unknown error occurred");
                             return;
+                        }
+                        
+                        // Convert server task input to actual task string
+                        switch (results.serverTask.toLowerCase()) {
+                            case "y":
+                            case "yes":
+                            results.serverTask =
+                                require("./modules/server-task");
+                            break;
+                            
+                            case "n":
+                            case "no":
+                            results.serverTask = "";
+                            break;
+                        }
+                        
+                        results.serverTask = replaceValues(
+                            results.serverTask,
+                            results
+                        );
+                        
+                        // Capture input results in the user input config object
+                        for (let k in results) {
+                            if (!results.hasOwnProperty(k)) { continue; }
+                            
+                            userInput.fields[k] = results[k];
                         }
                         
                         // Create the project
