@@ -18,6 +18,7 @@ const minimist = require("minimist"),
     
     readFileAsync = promisify(fs.readFile),
     writeFileAsync = promisify(fs.writeFile),
+    mkdirAsync = promisify(fs.mkdir),
     unlinkAsync = promisify(fs.unlink),
     
     // Template directory path.
@@ -143,7 +144,7 @@ function sanitizeRelPath(path) {
 */
 async function createProject(rootPath, input) {
     await copyTemplateFiles(rootPath, input);
-    await createStructure(rootPath, input);
+    await createStructure(rootPath, CONFIG, input);
     await installDeps();
 }
 
@@ -246,9 +247,65 @@ async function copyTemplateFiles(rootPath, input) {
 /* Creates the base project structure.
     
     rootPath - See createProject().
+    config - Project config data.
     input - See createProject().
 */
-async function createStructure(rootPath, input) {
+async function createStructure(rootPath, config, input) {
+    console.log("Creating source/destination directories...");
+    rootPath = "/" + sanitizeRelPath(rootPath) + "/";
+    
+    let srcPaths = config.PATH.SRC,
+        destPaths = config.PATH.DEST,
+        srcDir = rootPath + srcPaths.ROOT,
+        destDir = rootPath + destPaths.ROOT,
+        opts = { recursive: true, mode: 0o755 },
+        errors = [],
+        catchAll = (p) => {
+            p.catch((e) => {
+                errors.push(e);
+                return;
+            });
+        };
+    
+    if (fs.existsSync(srcDir)) {
+        console.error("Source directory already exists, exiting to avoid " +
+            "breaking anything");
+        
+        process.exit();
+    }
+    else if (fs.existsSync(destDir)) {
+        console.error("Destination directory already exists, exiting to " +
+            "avoid breaking anything");
+        
+        process.exit();
+    }
+    
+    // Create source and destination root directories
+    return Promise.all(
+        [
+            mkdirAsync(srcDir, opts),
+            mkdirAsync(destDir, opts)
+        ].map(catchAll)
+    )
+        .then((res) => {
+            // Create file type-specific directories
+            return Promise.all([
+                    mkdirAsync(rootPath + srcPaths.JS, opts),
+                    mkdirAsync(rootPath + srcPaths.SASS, opts),
+                    mkdirAsync(rootPath + destPaths.JS, opts),
+                    mkdirAsync(rootPath + destPaths.SASS, opts)
+                ].map(catchAll)
+            );
+        })
+        .then((res) => {
+            if (errors.length) {
+                for (let i=0, l=errors.length; i<l; ++i) {
+                    console.error(errors[i]);
+                }
+                
+                process.exit();
+            }
+        });
 }
 
 /* Installs package dependencies.
