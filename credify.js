@@ -178,9 +178,29 @@ function sanitizeRelPath(path) {
     input - User input data for project configuration.
 */
 async function createProject(rootPath, input) {
-    await copyTemplateFiles(rootPath, input);
-    await createStructure(rootPath, CONFIG, input);
-    await installDeps();
+    try {
+        await copyTemplateFiles(rootPath, input);
+    }
+    catch (e) {
+        console.error("Template file creation failed");
+        process.exit();
+    }
+    
+    try {
+        await createStructure(rootPath, CONFIG, input);
+    }
+    catch (e) {
+        console.error("Project structure generation failed");
+        process.exit();
+    }
+    
+    try {
+        await installDeps();
+    }
+    catch (e) {
+        console.error("Dependency installation failed");
+        process.exit();
+    }
 }
 
 /* Copies template files into the project.
@@ -489,10 +509,16 @@ function replaceValues(str, values) {
                         }
                         
                         // Create the project
-                        await createProject(
-                            "/" + sanitizeRelPath(rootPath),
-                            results
-                        );
+                        try {
+                            await createProject(
+                                "/" + sanitizeRelPath(rootPath),
+                                results
+                            );
+                        }
+                        catch (e) {
+                            console.error("An unknown error occurred");
+                            process.exit();
+                        }
                     });
                 }
             });
