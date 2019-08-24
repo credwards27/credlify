@@ -22,6 +22,8 @@ const minimist = require("minimist"),
     mkdirAsync = promisify(fs.mkdir),
     unlinkAsync = promisify(fs.unlink),
     
+    PACKAGE = require(process.cwd() + "/package.json"),
+    
     // Template directory path.
     TPL_PATH = __dirname + "/tpl",
     
@@ -500,6 +502,11 @@ function replaceValues(str, values) {
                             results.serverTask,
                             results
                         );
+                        
+                        // Add custom fields
+                        results.appName = PACKAGE.name;
+                        results.description = PACKAGE.description;
+                        results.license = PACKAGE.license;
                         
                         // Capture input results in the user input config object
                         for (let k in results) {
