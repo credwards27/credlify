@@ -32,6 +32,11 @@ const minimist = require("minimist"),
         return sanitizeRelPath(file);
     }),
     
+    // Captured template file strings from template files named with 2 leading
+    // underscores, keyed by unprefixed file name. These must be output
+    // manually.
+    CAPTURED_TEMPLATES = {},
+    
     // NPM development dependencies to install.
     PACKAGES = {
         deps: [
@@ -233,6 +238,12 @@ async function copyTemplateFiles(rootPath, input) {
         
         data = replaceValues(data, input);
         
+        // Capture the file to output later if specified by template file name
+        if (file.match(/^__/)) {
+            CAPTURED_TEMPLATES[file.replace(/^__/, "")] = data;
+            continue;
+        }
+        
         // Copy the modified template file into the project
         try {
             file = file.replace(/^_/, "");
@@ -317,6 +328,10 @@ async function createStructure(rootPath, config, input) {
         destPaths = config.PATH.DEST,
         srcDir = rootPath + srcPaths.ROOT,
         destDir = rootPath + destPaths.ROOT,
+        srcJs = rootPath + srcPaths.JS,
+        srcSass = rootPath + srcPaths.SASS,
+        destJs = rootPath + destPaths.JS,
+        destSass = rootPath + destPaths.SASS,
         opts = { recursive: true, mode: 0o755 },
         errors = [],
         catchAll = (p) => {
@@ -324,6 +339,11 @@ async function createStructure(rootPath, config, input) {
                 errors.push(e);
                 return;
             });
+        },
+        writeOpts = {
+            encoding: "utf8",
+            mode: 0o644,
+            flag: "wx"
         };
     
     if (fs.existsSync(srcDir)) {
@@ -349,10 +369,10 @@ async function createStructure(rootPath, config, input) {
         .then((res) => {
             // Create file type-specific directories
             return Promise.all([
-                    mkdirAsync(rootPath + srcPaths.JS, opts),
-                    mkdirAsync(rootPath + srcPaths.SASS, opts),
-                    mkdirAsync(rootPath + destPaths.JS, opts),
-                    mkdirAsync(rootPath + destPaths.SASS, opts)
+                    mkdirAsync(srcJs, opts),
+                    mkdirAsync(srcSass, opts),
+                    mkdirAsync(destJs, opts),
+                    mkdirAsync(destSass, opts)
                 ].map(catchAll)
             );
         })
@@ -364,6 +384,17 @@ async function createStructure(rootPath, config, input) {
                 
                 process.exit();
             }
+            
+            // Add additional project files
+            return Promise.all([
+                writeFileAsync(srcJs + "/index.js", "", writeOpts),
+                writeFileAsync(srcSass + "/index.scss", "", writeOpts),
+                writeFileAsync(
+                    destDir + "/index.html",
+                    CAPTURED_TEMPLATES["index.html"],
+                    writeOpts
+                )
+            ].map(catchAll));
         });
 }
 
