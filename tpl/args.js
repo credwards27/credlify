@@ -5,7 +5,7 @@
 
 // Dependencies.
 const minimist = require("minimist"),
-    minimistOpts = require("minimist"),
+    minimistOpts = require("minimist-options"),
     
     // Argument configuration.
     ARG_OPTS = {
