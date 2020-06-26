@@ -8,7 +8,7 @@ const minimist = require("minimist"),
     minimistOpts = require("minimist"),
     
     // Argument configuration.
-    const ARG_OPTS = {
+    ARG_OPTS = {
         production: {
             type: "boolean",
             default: false
