@@ -37,9 +37,9 @@
     "setup"
   ],
   "dependencies": {
-    "minimist": "~1.2.3",
-    "minimist-options": "~4.0.1",
+    "minimist": "~1.2.5",
+    "minimist-options": "~4.1.0",
     "prompt": "~1.0.0",
-    "uuid": "~3.3.2"
+    "uuid": "~8.2.0"
   }
 }

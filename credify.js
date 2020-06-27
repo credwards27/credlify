@@ -11,7 +11,7 @@
 const minimist = require("minimist"),
     minimistOpts = require("minimist-options"),
     prompt = require("prompt"),
-    uuid = require("uuid/v4"),
+    uuid = require("uuid").v4,
     fs = require("fs"),
     path = require("path"),
     spawn = require("child_process").spawn,
