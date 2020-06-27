@@ -31,8 +31,8 @@ const PATH = CONFIG.PATH,
 
 // Watches the project for changes and recompiles.
 gulp.task("watch", (done) => {
-    gulp.watch(PATH.SRC.SASS + "/**/*.scss", tasks.sass);
-    gulp.watch(PATH.SRC.JS + "/**/*.js", tasks.js);
+    gulp.watch(PATH.SRC.SASS + "/**/*.scss", gulp.series("sass"));
+    gulp.watch(PATH.SRC.JS + "/**/*.js", gulp.series("js"));
     
     done();
 });
