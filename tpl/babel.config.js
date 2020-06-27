@@ -24,14 +24,6 @@ module.exports = function(api) {
                 {
                     helpers: false
                 }
-            ],
-            
-            [
-                "babel-plugin-root-import",
-                {
-                    "rootPathSuffix": CONFIG.PATH.SRC.JS,
-                    "rootPathPrefix": "~"
-                }
             ]
         ],
         

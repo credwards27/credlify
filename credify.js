@@ -55,7 +55,6 @@ const minimist = require("minimist"),
             "@babel/register",
             "babel-loader",
             "babel-minify-webpack-plugin",
-            "babel-plugin-root-import",
             "del",
             "gulp",
             "gulp-clean-css",
@@ -329,6 +328,7 @@ async function createStructure(rootPath, config, input) {
         srcDir = rootPath + srcPaths.ROOT,
         destDir = rootPath + destPaths.ROOT,
         srcJs = rootPath + srcPaths.JS,
+        srcJsModules = srcJs + "/node_modules/app",
         srcSass = rootPath + srcPaths.SASS,
         destJs = rootPath + destPaths.JS,
         destSass = rootPath + destPaths.SASS,
@@ -370,6 +370,7 @@ async function createStructure(rootPath, config, input) {
             // Create file type-specific directories
             return Promise.all([
                     mkdirAsync(srcJs, opts),
+                    mkdirAsync(srcJsModules, opts),
                     mkdirAsync(srcSass, opts),
                     mkdirAsync(destJs, opts),
                     mkdirAsync(destSass, opts)
