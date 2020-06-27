@@ -13,6 +13,7 @@ import webpack from "webpack";
 import webpackStream from "webpack-stream";
 
 import del from "del";
+%%[serverImport]%%
 
 import CONFIG from "./config";
 import CONFIG_WEBPACK from "./webpack.config";
@@ -101,4 +102,4 @@ gulp.task(
 gulp.task("w", gulp.parallel("watch"));
 
 // Default gulp task.
-gulp.task("default", gulp.series("build", "watch"));
+gulp.task("default", gulp.series("build", "watch"%%[serverTaskName]%%));

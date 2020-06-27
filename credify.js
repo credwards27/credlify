@@ -521,8 +521,13 @@ function replaceValues(str, values) {
                         switch (results.serverTask.toLowerCase()) {
                             case "y":
                             case "yes":
+                            results.serverImport = "import liveServer from " +
+                                "\"live-server\";";
+                            
                             results.serverTask =
                                 require("./modules/server-task");
+                            
+                            results.serverTaskName = ", \"server\"";
                             break;
                             
                             case "n":
