@@ -238,6 +238,7 @@ async function copyTemplateFiles(rootPath, input) {
         data = replaceValues(data, input);
         
         // Capture the file to output later if specified by template file name
+        // (double underscore prefix)
         if (file.match(/^__/)) {
             CAPTURED_TEMPLATES[file.replace(/^__/, "")] = data;
             continue;
@@ -335,9 +336,8 @@ async function createStructure(rootPath, config, input) {
         opts = { recursive: true, mode: 0o755 },
         errors = [],
         catchAll = (p) => {
-            p.catch((e) => {
+            return p.catch((e) => {
                 errors.push(e);
-                return;
             });
         },
         writeOpts = {
@@ -360,16 +360,15 @@ async function createStructure(rootPath, config, input) {
     }
     
     // Create source and destination root directories
-    return Promise.all(
+    return Promise.allSettled(
         [
             mkdirAsync(srcDir, opts),
             mkdirAsync(destDir, opts)
         ].map(catchAll)
     )
-        .then((res) => {
+        .then(() => {
             // Create file type-specific directories
-            return Promise.all([
-                    mkdirAsync(srcJs, opts),
+            return Promise.allSettled([
                     mkdirAsync(srcJsModules, opts),
                     mkdirAsync(srcSass, opts),
                     mkdirAsync(destJs, opts),
@@ -377,7 +376,24 @@ async function createStructure(rootPath, config, input) {
                 ].map(catchAll)
             );
         })
-        .then((res) => {
+        .then(() => {
+            // Add additional project files
+            return Promise.allSettled([
+                writeFileAsync(srcJs + "/index.js", "", writeOpts),
+                writeFileAsync(srcSass + "/index.scss", "", writeOpts),
+                writeFileAsync(
+                    srcJsModules + "/.gitkeep",
+                    CAPTURED_TEMPLATES[".gitkeep"],
+                    writeOpts
+                ),
+                writeFileAsync(
+                    destDir + "/index.html",
+                    CAPTURED_TEMPLATES["index.html"],
+                    writeOpts
+                )
+            ].map(catchAll));
+        })
+        .then(() => {
             if (errors.length) {
                 for (let i=0, l=errors.length; i<l; ++i) {
                     console.error(errors[i]);
@@ -385,18 +401,7 @@ async function createStructure(rootPath, config, input) {
                 
                 process.exit();
             }
-            
-            // Add additional project files
-            return Promise.all([
-                writeFileAsync(srcJs + "/index.js", "", writeOpts),
-                writeFileAsync(srcSass + "/index.scss", "", writeOpts),
-                writeFileAsync(
-                    destDir + "/index.html",
-                    CAPTURED_TEMPLATES["index.html"],
-                    writeOpts
-                )
-            ].map(catchAll));
-        });
+        })
 }
 
 /* Installs package dependencies.
