@@ -12,6 +12,7 @@ const minimist = require("minimist"),
     minimistOpts = require("minimist-options"),
     prompt = require("prompt"),
     uuid = require("uuid").v4,
+    osl = require("oslicense"),
     fs = require("fs"),
     path = require("path"),
     spawn = require("child_process").spawn,
@@ -390,7 +391,30 @@ async function createStructure(rootPath, config, input) {
                     destDir + "/index.html",
                     CAPTURED_TEMPLATES["index.html"],
                     writeOpts
-                )
+                ),
+                
+                (async () => {
+                    // Add license file
+                    let licenseText;
+                    
+                    try {
+                        licenseText = await osl.getLicenseText(
+                            osl.getNearestLicense());
+                    }
+                    catch (e) {
+                        console.log("No valid OSI license ID found in " +
+                            "package.json; license file was not generated\n" +
+                            "See https://opensource.org/licenses/alphabetical");
+                        
+                        return;
+                    }
+                    
+                    return writeFileAsync(
+                        process.cwd() + "/LICENSE.md",
+                        `${licenseText}\n`,
+                        writeOpts
+                    );
+                })()
             ].map(catchAll));
         })
         .then(() => {
