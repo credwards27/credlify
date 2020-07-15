@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-/* credify
+/* credlify.js
     
     A simple scaffolding helper for node projects.
 */
