@@ -297,7 +297,7 @@ async function copyTemplateFiles(rootPath, input, config, structure) {
         }
         catch (e) {
             // Skip file if a read error occurred
-            console.error("Template file '" + file + "' could not be copied");
+            console.error(`Template file '${file}' could not be copied`);
             continue;
         }
         
@@ -327,11 +327,11 @@ async function copyTemplateFiles(rootPath, input, config, structure) {
             
             switch (e.code) {
                 case "EEXIST":
-                msg = "File at '" + destFile + "' already exists";
+                msg = `File at '${destFile}' already exists`;
                 break;
                 
                 default:
-                msg = "Could not create file at '" + destFile + "'";
+                msg = `Could not create file at '${destFile}'`;
             }
             
             console.error(msg);
@@ -505,11 +505,11 @@ async function installDeps() {
     will return an empty object.
 */
 async function getConfigData(rootPath, input) {
-    let uuidConfig = rootPath + "/config-" + uuid() + ".js",
+    let uuidConfig = `${rootPath}/config-` + uuid() + ".js",
         data;
     
     try {
-        data = await readFileAsync(TPL_PATH + "/config.js", {
+        data = await readFileAsync(`${TPL_PATH}/config.js`, {
             encoding: "utf8"
         });
     }
@@ -536,13 +536,12 @@ async function getConfigData(rootPath, input) {
         
         switch (e.code) {
             case "EEXIST":
-            msg = "File at '" + uuidConfig + "' already exists (the chances " +
-                "of this are monumentally small, try running the script again)";
+            msg = `File at '${uuidConfig}' already exists (the chances of ` +
+                "this are monumentally small, try running the script again)";
             break;
             
             default:
-            msg = "Could not create temporary config file at '" + uuidConfig +
-                "'";
+            msg = `Could not create temporary config file at '${uuidConfig}'`;
             
             console.error(msg);
         }
@@ -553,8 +552,8 @@ async function getConfigData(rootPath, input) {
         await unlinkAsync(uuidConfig);
     }
     catch (e) {
-        console.error("Temporary config file at '" + uuidConfig +
-            "' could not be deleted, and must be removed manually");
+        console.error(`Temporary config file at '${uuidConfig}' could not be ` +
+            "deleted, and must be removed manually");
     }
     
     return data;
