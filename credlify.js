@@ -603,11 +603,26 @@ function getNearestPkg() {
     }
 }
 
+/* Shows help text and exits.
+*/
+function showHelp() {
+    let text = fs.readFileSync(__dirname + "/help.txt", {
+        encoding: "utf8"
+    });
+    
+    console.log(text.trim());
+    process.exit();
+}
+
 //
 // Main script entry point
 //
 
 (async () => {
+    if (ARGS.help) {
+        showHelp();
+    }
+    
     if (ARGS.version) {
         let pkg = require("./package.json");
         
