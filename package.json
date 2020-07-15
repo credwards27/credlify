@@ -39,7 +39,7 @@
   "dependencies": {
     "minimist": "~1.2.5",
     "minimist-options": "~4.1.0",
-    "oslicense": "~1.1.1",
+    "oslicense": "~1.2.1",
     "prompt": "~1.0.0",
     "uuid": "~8.2.0"
   }
