@@ -23,8 +23,6 @@ const minimist = require("minimist"),
     mkdirAsync = promisify(fs.mkdir),
     unlinkAsync = promisify(fs.unlink),
     
-    PACKAGE = require(process.cwd() + "/package.json"),
-    
     // Template directory path.
     TPL_PATH = __dirname + "/tpl",
     
@@ -73,17 +71,23 @@ const minimist = require("minimist"),
             alias: "h"
         },
         
-        "dirs": {
+        // Shows the package version.
+        version: {
+            type: "boolean",
+            alias: "v"
+        },
+        
+        dirs: {
             type: "boolean",
             default: true
         },
         
-        "files": {
+        files: {
             type: "boolean",
             default: true
         },
         
-        "deps": {
+        deps: {
             type: "boolean",
             default: true
         }
@@ -176,9 +180,6 @@ const minimist = require("minimist"),
             }
         }
     };
-
-// Config data module (required at runtime).
-var CONFIG = null;
 
 /* Sanitizes a relative path string.
     
@@ -575,20 +576,55 @@ function replaceValues(str, values) {
     return str;
 }
 
+/* Gets the path of the nearest package.json file. This will check for a file in
+    the following order:
+        
+        - In the current working directory
+        - In the current working directory path's ancestor chain, starting with
+          the parent directory
+    
+    Returns the file path of the nearest package.json file relative to the
+    current working directory. If no package.json file is found, this will
+    return undefined.
+*/
+function getNearestPkg() {
+    // Attempt to get license type from local package.json
+    let sep = path.sep,
+        dirs = process.cwd().split(sep);
+    
+    while (dirs.length) {
+        let pkg = dirs.join(sep) + `${sep}package.json`;
+        
+        if (fs.existsSync(pkg)) {
+            return pkg;
+        }
+        
+        dirs.pop();
+    }
+}
+
 //
 // Main script entry point
 //
 
 (async () => {
-    if (!fs.existsSync(process.cwd() + "/package.json")) {
-        console.error("This isn't an npm package, run 'npm init' first");
+    if (ARGS.version) {
+        let pkg = require("./package.json");
+        
+        console.log(pkg.version);
         process.exit();
     }
     
     let rootPath = process.cwd(),
+        projectPkg = getNearestPkg(),
         numFiles = TEMPLATES.length,
         checked = 0,
         exists = [];
+    
+    if (!projectPkg) {
+        console.error("No package.json file found, run 'npm init' first");
+        process.exit();
+    }
     
     // Make sure no existing files will be overwritten
     for (let i=0, l=TEMPLATES.length; i<l; ++i) {
@@ -648,8 +684,8 @@ function replaceValues(str, values) {
                         );
                         
                         // Add custom fields
-                        results.appName = PACKAGE.name;
-                        results.description = PACKAGE.description;
+                        results.appName = projectPkg.name;
+                        results.description = projectPkg.description;
                         results.license = osl.getNearestLicense();
                         
                         // Capture input results in the user input config object
