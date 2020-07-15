@@ -72,7 +72,27 @@ const minimist = require("minimist"),
     },
     
     // CLI argument configuration.
-    ARG_OPTS = {},
+    ARG_OPTS = {
+        help: {
+            type: "boolean",
+            alias: "h"
+        },
+        
+        "dirs": {
+            type: "boolean",
+            default: true
+        },
+        
+        "files": {
+            type: "boolean",
+            default: true
+        },
+        
+        "deps": {
+            type: "boolean",
+            default: true
+        }
+    },
     
     // Parsed CLI arguments.
     ARGS = Object.freeze(
@@ -183,26 +203,49 @@ function sanitizeRelPath(path) {
     
     rootPath - Root project directory path.
     input - User input data for project configuration.
+    config - Project config data from the config.js template file. See
+        getConfigData().
 */
-async function createProject(rootPath, input) {
-    try {
-        await copyTemplateFiles(rootPath, input);
-    }
-    catch (e) {
-        console.error("Template file creation failed");
-        process.exit();
-    }
+async function createProject(rootPath, input, config) {
+    let structure;
     
+    // Generate project structure directories
     try {
-        await createStructure(rootPath, CONFIG, input);
+        if (ARGS["dirs"]) {
+            await createStructure(rootPath, input, config);
+            structure = true;
+        }
+        else {
+            console.log("Skipped project structure generation");
+        }
     }
     catch (e) {
         console.error("Project structure generation failed");
         process.exit();
     }
     
+    // Copy bootstrap files
     try {
-        await installDeps();
+        if (ARGS["files"]) {
+            await copyTemplateFiles(rootPath, input, config, structure);
+        }
+        else {
+            console.log("Skipped template file creation");
+        }
+    }
+    catch (e) {
+        console.error("Template file creation failed");
+        process.exit();
+    }
+    
+    // Installed dependencies for build configuration
+    try {
+        if (ARGS["deps"]) {
+            await installDeps();
+        }
+        else {
+            console.log("Skipped dependency installation");
+        }
     }
     catch (e) {
         console.error("Dependency installation failed");
@@ -214,10 +257,32 @@ async function createProject(rootPath, input) {
     
     rootPath - See createProject().
     input - See createProject().
+    config - See createProject().
+    structure - True to include template files that depend on directory
+        structure, false otherwise. Defaults to false.
 */
-async function copyTemplateFiles(rootPath, input) {
+async function copyTemplateFiles(rootPath, input, config, structure) {
     // Copy template files with custom user data
     console.log("Creating build pipeline files...");
+    
+    // Get license text if possible
+    input.licenseText = "";
+    
+    if (input.license) {
+        let text = "";
+        
+        try {
+            text = await osl.getLicenseText(input.license);
+            input.licenseText = text;
+        }
+        catch (e) {}
+        
+        if (!input.licenseText) {
+            console.error("\nNo valid OSI license ID found in package.json; " +
+                "an empty license file was generated\n" +
+                "See https://opensource.org/licenses/alphabetical\n");
+        }
+    }
     
     for (let i=0, l=TEMPLATES.length; i<l; ++i) {
         let file = TEMPLATES[i],
@@ -271,69 +336,59 @@ async function copyTemplateFiles(rootPath, input) {
             
             console.error(msg);
         }
+    }
+    
+    // Add additional project files
+    if (structure) {
+        let srcPaths = config.PATH.SRC,
+            destPaths = config.PATH.DEST,
+            srcJs = rootPath + srcPaths.JS,
+            opts = {
+                encoding: "utf8",
+                mode: 0o644,
+                flag: "wx"
+            };
         
-        // Create temporary config file to load for this script
-        if ("config.js" === file) {
-            let uuidConfig = rootPath + "/config-" + uuid() + ".js";
-            
-            try {
-                await writeFileAsync(uuidConfig, data, {
-                    encoding: "utf8",
-                    mode: 0o644,
-                    flag: "wx"
+        return Promise.allSettled(
+            [
+                writeFileAsync(`${srcJs}/index.js`, "", opts),
+                
+                writeFileAsync(`${rootPath}${srcPaths.SASS}/index.scss`, "",
+                    opts),
+                
+                writeFileAsync(
+                    `${srcJs}/node_modules/app/.gitkeep`,
+                    CAPTURED_TEMPLATES[".gitkeep"],
+                    opts
+                ),
+                
+                writeFileAsync(
+                    `${rootPath}${destPaths.ROOT}/index.html`,
+                    CAPTURED_TEMPLATES["index.html"],
+                    opts
+                )
+            ].map((p) => {
+                return p.catch((e) => {
+                    errors.push(e);
                 });
-                
-                CONFIG = require(uuidConfig);
-            }
-            catch (e) {
-                // Temporary config file could not be written
-                let msg;
-                
-                switch (e.code) {
-                    case "EEXIST":
-                    msg = "File at '" + uuidConfig + "' already exists (the " +
-                        "chances of this are monumentally small, try running " +
-                        "the script again)";
-                    break;
-                    
-                    default:
-                    msg = "Could not create temporary config file at '" +
-                        uuidConfig + "'";
-                    
-                    console.error(msg);
-                }
-            }
-            
-            try {
-                await unlinkAsync(uuidConfig);
-            }
-            catch (e) {
-                console.error("Temporary config file at '" + uuidConfig +
-                    "' could not be deleted, and must be removed manually");
-            }
-        }
+            })
+        );
     }
 }
 
 /* Creates the base project structure.
     
     rootPath - See createProject().
-    config - Project config data.
     input - See createProject().
+    config - See createProject().
 */
-async function createStructure(rootPath, config, input) {
+async function createStructure(rootPath, input, config) {
     console.log("Creating source/destination directories...");
-    rootPath = "/" + sanitizeRelPath(rootPath) + "/";
     
     let srcPaths = config.PATH.SRC,
         destPaths = config.PATH.DEST,
         srcDir = rootPath + srcPaths.ROOT,
         destDir = rootPath + destPaths.ROOT,
-        srcJs = rootPath + srcPaths.JS,
-        srcJsModules = srcJs + "/node_modules/app",
-        srcSass = rootPath + srcPaths.SASS,
-        destJs = rootPath + destPaths.JS,
-        destSass = rootPath + destPaths.SASS,
         opts = { recursive: true, mode: 0o755 },
         errors = [],
         catchAll = (p) => {
@@ -370,52 +425,13 @@ async function createStructure(rootPath, config, input) {
         .then(() => {
             // Create file type-specific directories
             return Promise.allSettled([
-                    mkdirAsync(srcJsModules, opts),
-                    mkdirAsync(srcSass, opts),
-                    mkdirAsync(destJs, opts),
-                    mkdirAsync(destSass, opts)
+                    mkdirAsync(`${rootPath}${srcPaths.JS}/node_modules/app`,
+                        opts),
+                    mkdirAsync(`${rootPath}${srcPaths.SASS}`, opts),
+                    mkdirAsync(`${rootPath}${destPaths.JS}`, opts),
+                    mkdirAsync(`${rootPath}${destPaths.SASS}`, opts)
                 ].map(catchAll)
             );
-        })
-        .then(() => {
-            // Add additional project files
-            return Promise.allSettled([
-                writeFileAsync(srcJs + "/index.js", "", writeOpts),
-                writeFileAsync(srcSass + "/index.scss", "", writeOpts),
-                writeFileAsync(
-                    srcJsModules + "/.gitkeep",
-                    CAPTURED_TEMPLATES[".gitkeep"],
-                    writeOpts
-                ),
-                writeFileAsync(
-                    destDir + "/index.html",
-                    CAPTURED_TEMPLATES["index.html"],
-                    writeOpts
-                ),
-                
-                (async () => {
-                    // Add license file
-                    let licenseText;
-                    
-                    try {
-                        licenseText = await osl.getLicenseText(
-                            osl.getNearestLicense());
-                    }
-                    catch (e) {
-                        console.log("No valid OSI license ID found in " +
-                            "package.json; license file was not generated\n" +
-                            "See https://opensource.org/licenses/alphabetical");
-                        
-                        return;
-                    }
-                    
-                    return writeFileAsync(
-                        process.cwd() + "/LICENSE.md",
-                        `${licenseText}\n`,
-                        writeOpts
-                    );
-                })()
-            ].map(catchAll));
         })
         .then(() => {
             if (errors.length) {
@@ -480,6 +496,70 @@ async function installDeps() {
     return promise;
 }
 
+/* Loads and returns config.js template file for use in this script.
+    
+    rootPath - Root project directory path.
+    input - User input data for project configuration.
+    
+    Returns loaded template file data. If data load fails for any reason, this
+    will return an empty object.
+*/
+async function getConfigData(rootPath, input) {
+    let uuidConfig = rootPath + "/config-" + uuid() + ".js",
+        data;
+    
+    try {
+        data = await readFileAsync(TPL_PATH + "/config.js", {
+            encoding: "utf8"
+        });
+    }
+    catch (e) {
+        // Skip file if a read error occurred
+        console.error("Config data could not be loaded");
+        return {};
+    }
+    
+    data = replaceValues(data, input);
+    
+    try {
+        await writeFileAsync(uuidConfig, data, {
+            encoding: "utf8",
+            mode: 0o644,
+            flag: "wx"
+        });
+        
+        data = require(uuidConfig);
+    }
+    catch (e) {
+        // Temporary config file could not be written
+        let msg;
+        
+        switch (e.code) {
+            case "EEXIST":
+            msg = "File at '" + uuidConfig + "' already exists (the chances " +
+                "of this are monumentally small, try running the script again)";
+            break;
+            
+            default:
+            msg = "Could not create temporary config file at '" + uuidConfig +
+                "'";
+            
+            console.error(msg);
+        }
+    }
+    
+    // Clean up
+    try {
+        await unlinkAsync(uuidConfig);
+    }
+    catch (e) {
+        console.error("Temporary config file at '" + uuidConfig +
+            "' could not be deleted, and must be removed manually");
+    }
+    
+    return data;
+}
+
 /* Replaces special placeholders in a string with given values.
     
     str - String containing placeholders. Placeholders must be in the following
@@ -503,7 +583,7 @@ function replaceValues(str, values) {
 // Main script entry point
 //
 
-(() => {
+(async () => {
     if (!fs.existsSync(process.cwd() + "/package.json")) {
         console.error("This isn't an npm package, run 'npm init' first");
         process.exit();
@@ -574,7 +654,7 @@ function replaceValues(str, values) {
                         // Add custom fields
                         results.appName = PACKAGE.name;
                         results.description = PACKAGE.description;
-                        results.license = PACKAGE.license;
+                        results.license = osl.getNearestLicense();
                         
                         // Capture input results in the user input config object
                         for (let k in results) {
@@ -583,11 +663,14 @@ function replaceValues(str, values) {
                             userInput.fields[k] = results[k];
                         }
                         
+                        let config = await getConfigData(rootPath, results);
+                        
                         // Create the project
                         try {
                             await createProject(
-                                "/" + sanitizeRelPath(rootPath),
-                                results
+                                "/" + sanitizeRelPath(rootPath) + "/",
+                                results,
+                                config
                             );
                         }
                         catch (e) {
