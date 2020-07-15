@@ -33,11 +33,6 @@ const minimist = require("minimist"),
         return sanitizeRelPath(file);
     }),
     
-    // Captured template file strings from template files named with 2 leading
-    // underscores, keyed by unprefixed file name. These must be output
-    // manually.
-    CAPTURED_TEMPLATES = {},
-    
     // NPM development dependencies to install.
     PACKAGES = {
         deps: [
@@ -265,6 +260,8 @@ async function copyTemplateFiles(rootPath, input, config, structure) {
     // Copy template files with custom user data
     console.log("Creating build pipeline files...");
     
+    let capturedTemplates = {};
+    
     // Get license text if possible
     input.licenseText = "";
     
@@ -306,7 +303,7 @@ async function copyTemplateFiles(rootPath, input, config, structure) {
         // Capture the file to output later if specified by template file name
         // (double underscore prefix)
         if (file.match(/^__/)) {
-            CAPTURED_TEMPLATES[file.replace(/^__/, "")] = data;
+            capturedTemplates[file.replace(/^__/, "")] = data;
             continue;
         }
         
@@ -358,13 +355,13 @@ async function copyTemplateFiles(rootPath, input, config, structure) {
                 
                 writeFileAsync(
                     `${srcJs}/node_modules/app/.gitkeep`,
-                    CAPTURED_TEMPLATES[".gitkeep"],
+                    capturedTemplates[".gitkeep"],
                     opts
                 ),
                 
                 writeFileAsync(
                     `${rootPath}${destPaths.ROOT}/index.html`,
-                    CAPTURED_TEMPLATES["index.html"],
+                    capturedTemplates["index.html"],
                     opts
                 )
             ].map((p) => {
