@@ -1,6 +1,6 @@
 {
   "name": "credify",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A simple scaffolding helper for node projects",
   "main": "credify.js",
   "engines": {
@@ -39,7 +39,7 @@
   "dependencies": {
     "minimist": "~1.2.5",
     "minimist-options": "~4.1.0",
-    "oslicense": "~1.1.0",
+    "oslicense": "~1.1.1",
     "prompt": "~1.0.0",
     "uuid": "~8.2.0"
   }
