@@ -576,18 +576,23 @@ function replaceValues(str, values) {
     return str;
 }
 
-/* Gets the path of the nearest package.json file. This will check for a file in
-    the following order:
+/* Gets package data or path for the nearest package.json file.
+    
+    NOTE: This will check for a package.json file in the following order:
         
         - In the current working directory
         - In the current working directory path's ancestor chain, starting with
           the parent directory
     
-    Returns the file path of the nearest package.json file relative to the
-    current working directory. If no package.json file is found, this will
-    return undefined.
+    filePath - True to return the file path to the found package.json file,
+        instead of the parsed package data, false to return parsed data.
+        Defaults to false.
+    
+    Returns the package data or file path of the nearest package.json file,
+    relative to the current working directory. If no package.json file is found,
+    this will return undefined.
 */
-function getNearestPkg() {
+function getNearestPkg(filePath) {
     // Attempt to get license type from local package.json
     let sep = path.sep,
         dirs = process.cwd().split(sep);
@@ -596,7 +601,7 @@ function getNearestPkg() {
         let pkg = dirs.join(sep) + `${sep}package.json`;
         
         if (fs.existsSync(pkg)) {
-            return pkg;
+            return filePath ? pkg : require(pkg);
         }
         
         dirs.pop();
