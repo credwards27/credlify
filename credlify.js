@@ -10,7 +10,7 @@
 // Dependencies.
 const minimist = require("minimist"),
     minimistOpts = require("minimist-options"),
-    prompt = require("prompt"),
+    prompts = require("prompts"),
     uuid = require("uuid").v4,
     osl = require("oslicense"),
     fs = require("fs"),
@@ -98,88 +98,76 @@ const minimist = require("minimist"),
         minimist(process.argv.slice(2), minimistOpts(ARG_OPTS))
     ),
     
-    // User input configuration.
-    userInput = {
-        fields: {},
-        properties: {
-            src: {
-                description: "Source directory (relative to project root)",
-                type: "string",
-                default: "src",
-                pattern: /^[^\\:*?"<>|\n]+$/,
-                message: "Path may not contain any of the following " +
-                    "characters: \\:*?\"<>| or newlines",
-                required: true,
-                before: sanitizeRelPath
-            },
-            
-            dest: {
-                description: "Destination directory (relative to project root)",
-                type: "string",
-                default: "dist",
-                pattern: /^[^\\:*?"<>|\n]+$/,
-                message: "Path may not contain any of the following " +
-                    "characters: \\:*?\"<>| or newlines",
-                required: true,
-                before: sanitizeRelPath
-            },
-            
-            srcJs: {
-                description: "JavaScript source directory (relative to source)",
-                type: "string",
-                default: "js",
-                pattern: /^[^\\:*?"<>|\n]+$/,
-                message: "Path may not contain any of the following " +
-                    "characters: \\:*?\"<>| or newlines",
-                required: true,
-                before: sanitizeRelPath
-            },
-            
-            destJs: {
-                description: "JavaScript bundle destination directory " +
-                    "(relative to destination)",
-                type: "string",
-                default: "assets/js",
-                pattern: /^[^\\:*?"<>|\n]+$/,
-                message: "Path may not contain any of the following " +
-                    "characters: \\:*?\"<>| or newlines",
-                required: true,
-                before: sanitizeRelPath
-            },
-            
-            srcSass: {
-                description: "SASS source directory (relative to source)",
-                type: "string",
-                default: "sass",
-                pattern: /^[^\\:*?"<>|\n]+$/,
-                message: "Path may not contain any of the following " +
-                    "characters: \\:*?\"<>| or newlines",
-                required: true,
-                before: sanitizeRelPath
-            },
-            
-            destSass: {
-                description: "Stylesheet bundle destination directory " +
-                    "(relative to destination)",
-                type: "string",
-                default: "assets/css",
-                pattern: /^[^\\:*?"<>|\n]+$/,
-                message: "Path may not contain any of the following " +
-                    "characters: \\:*?\"<>| or newlines",
-                required: true,
-                before: sanitizeRelPath
-            },
-            
-            serverTask: {
-                description: "Add optional live server gulp task ('yes' or " +
-                    "'no')",
-                type: "string",
-                default: "yes",
-                pattern: /^(y|n|yes|no)$/i,
-                message: "Choose 'yes' or 'no'"
+    // User input validation error messages.
+    INPUT_ERRORS = {
+        path: "Path may not contain any of the following characters: " +
+            "\\:*?\"<>| or newlines",
+        
+        yesNo: "Choose 'yes' or 'no'"
+    },
+    
+    // User input prompt configuration.
+    INPUT_PROMPTS = [
+        {
+            name: "src",
+            type: "text",
+            message: "Source directory (relative to project root)",
+            initial: "src",
+            validate: validatePath(INPUT_ERRORS.path)
+        },
+        
+        {
+            name: "dest",
+            type: "text",
+            message: "Destination directory (relative to project root)",
+            initial: "dist",
+            validate: validatePath(INPUT_ERRORS.path)
+        },
+        
+        {
+            name: "srcJs",
+            type: "text",
+            message: "JavaScript source directory (relative to source)",
+            initial: "js",
+            validate: validatePath(INPUT_ERRORS.path)
+        },
+        
+        {
+            name: "destJs",
+            type: "text",
+            message: "JavaScript bundle destination directory (relative to " +
+                "destination)",
+            initial: "assets/js",
+            validate: validatePath(INPUT_ERRORS.path)
+        },
+        
+        {
+            name: "srcSass",
+            type: "text",
+            message: "SASS source directory (relative to source)",
+            initial: "sass",
+            validate: validatePath(INPUT_ERRORS.path)
+        },
+        
+        {
+            name: "destSass",
+            type: "text",
+            message: "Stylesheet bundle destination directory (relative to " +
+                "destination)",
+            initial: "assets/css",
+            validate: validatePath(INPUT_ERRORS.path)
+        },
+        
+        {
+            name: "serverTask",
+            type: "text",
+            message: "Add optional live server gulp task ('yes' or 'no')",
+            initial: "yes",
+            validate: (val) => {
+                return /^(y|n|yes|no)$/i.test(val) || INPUT_ERRORS.yesNo
             }
-        }
-    };
+        },
+    ];
 
 /* Sanitizes a relative path string.
     
@@ -284,14 +272,12 @@ async function copyTemplateFiles(rootPath, input, config, structure) {
     
     for (let i=0, l=TEMPLATES.length; i<l; ++i) {
         let file = TEMPLATES[i],
-            tplFile = TPL_PATH + "/" + file,
+            tplFile = `${TPL_PATH}/${file}`,
             destFile, data;
         
         // Read the template file
         try {
-            data = await readFileAsync(
-                tplFile, { encoding: "utf8" }
-            );
+            data = await readFileAsync(tplFile, { encoding: "utf8" });
         }
         catch (e) {
             // Skip file if a read error occurred
@@ -608,6 +594,23 @@ function getNearestPkg(filePath) {
     }
 }
 
+/* Validation function generator for user input path values.
+    
+    msg - Message to display when input value is invalid. If omitted or not a
+        string, the default validation error message will be used.
+    
+    Returns a validation function for a prompt object.
+*/
+function validatePath(msg) {
+    return (val) => {
+        if (/^[^\\:*?"<>|\n]+$/.test(val)) {
+            return true;
+        }
+        
+        return typeof msg === "string" ? msg : false;
+    };
+}
+
 /* Shows help text and exits.
 */
 function showHelp() {
@@ -639,97 +642,85 @@ function showHelp() {
         projectPkg = getNearestPkg(),
         numFiles = TEMPLATES.length,
         checked = 0,
-        exists = [];
+        exists = [],
+        input;
     
     if (!projectPkg) {
         console.error("No package.json file found, run 'npm init' first");
         process.exit();
     }
     
+    // Get user input
+    try {
+        input = await prompts(INPUT_PROMPTS, {
+            onCancel: () => {
+                process.exit();
+            }
+        });
+    }
+    catch (e) {}
+    
+    // Convert server task input to actual task string
+    switch (input.serverTask.toLowerCase()) {
+        case "y":
+        case "yes":
+        input.serverImport = "import liveServer from \"live-server\";";
+        input.serverTask = require("./modules/server-task");
+        input.serverTaskName = ", \"server\"";
+        break;
+        
+        case "n":
+        case "no":
+        input.serverTask = "";
+        break;
+    }
+    
+    input.serverTask = replaceValues(input.serverTask, input);
+    
+    // Add custom fields
+    input.appName = projectPkg.name;
+    input.description = projectPkg.description;
+    input.license = osl.getNearestLicense();
+    
     // Make sure no existing files will be overwritten
     for (let i=0, l=TEMPLATES.length; i<l; ++i) {
         ((file) => {
-            fs.lstat(file, (err) => {
+            fs.lstat(file, async (err) => {
                 if (!err) {
                     // Stat succeeded, file exists
                     exists.push(file);
                 }
                 
-                if (++checked >= numFiles) {
-                    // All template files checked
-                    if (exists.length) {
-                        let msg = [
-                            "The following files already exist:\n",
-                            exists.join("\n"),
-                            "\nExiting to avoid breaking anything"
-                        ].join("\n");
-                        
-                        console.error(msg);
-                        process.exit();
-                    }
+                if (++checked < numFiles) {
+                    // More files to check
+                    return;
+                }
+                
+                // All template files checked
+                if (exists.length) {
+                    let msg = [
+                        "The following files already exist:\n",
+                        exists.join("\n"),
+                        "\nExiting to avoid breaking anything"
+                    ].join("\n");
                     
-                    // Get user input
-                    prompt.message = "";
+                    console.error(msg);
+                    process.exit();
+                }
+                
+                // Create the project
+                try {
+                    let config = await getConfigData(rootPath, input);
                     
-                    prompt.start();
-                    
-                    prompt.get(userInput, async (err, results) => {
-                        if (err) {
-                            console.error("An unknown error occurred");
-                            return;
-                        }
-                        
-                        // Convert server task input to actual task string
-                        switch (results.serverTask.toLowerCase()) {
-                            case "y":
-                            case "yes":
-                            results.serverImport = "import liveServer from " +
-                                "\"live-server\";";
-                            
-                            results.serverTask =
-                                require("./modules/server-task");
-                            
-                            results.serverTaskName = ", \"server\"";
-                            break;
-                            
-                            case "n":
-                            case "no":
-                            results.serverTask = "";
-                            break;
-                        }
-                        
-                        results.serverTask = replaceValues(
-                            results.serverTask,
-                            results
-                        );
-                        
-                        // Add custom fields
-                        results.appName = projectPkg.name;
-                        results.description = projectPkg.description;
-                        results.license = osl.getNearestLicense();
-                        
-                        // Capture input results in the user input config object
-                        for (let k in results) {
-                            if (!results.hasOwnProperty(k)) { continue; }
-                            
-                            userInput.fields[k] = results[k];
-                        }
-                        
-                        let config = await getConfigData(rootPath, results);
-                        
-                        // Create the project
-                        try {
-                            await createProject(
-                                "/" + sanitizeRelPath(rootPath) + "/",
-                                results,
-                                config
-                            );
-                        }
-                        catch (e) {
-                            console.error("An unknown error occurred");
-                            process.exit();
-                        }
-                    });
+                    await createProject(
+                        "/" + sanitizeRelPath(rootPath) + "/",
+                        input,
+                        config
+                    );
+                }
+                catch (e) {
+                    console.error("An unknown error occurred");
+                    process.exit();
                 }
             });
         })(TEMPLATES[i]);
