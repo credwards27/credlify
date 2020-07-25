@@ -32,8 +32,8 @@ const PATH = CONFIG.PATH,
 
 // Watches the project for changes and recompiles.
 gulp.task("watch", (done) => {
-    gulp.watch(PATH.SRC.SASS + "/**/*.scss", gulp.series("sass"));
-    gulp.watch(PATH.SRC.JS + "/**/*.js", gulp.series("js"));
+    gulp.watch(`${PATH.SRC.SASS}/**/*.scss`, gulp.series("sass"));
+    gulp.watch(`${PATH.SRC.JS}/**/*.js`, gulp.series("js"));
     
     done();
 });
@@ -41,14 +41,14 @@ gulp.task("watch", (done) => {
 // Clears the build destination directories for a clean build.
 gulp.task("clean", () => {
     return del([
-        PATH.DEST.SASS + "/**/*",
-        PATH.DEST.JS + "/**/*"
+        `${PATH.DEST.SASS}/**/*`,
+        `${PATH.DEST.JS}/**/*`
     ]);
 });
 
 // SASS build task.
 gulp.task("sass", () => {
-    let action = gulp.src(PATH.SRC.SASS + "/index.scss"),
+    let action = gulp.src(`${PATH.SRC.SASS}/index.scss`),
         sass = PLUGINS.sass,
         sourcemaps = PLUGINS.sourcemaps,
         production = getArg("production");
@@ -73,7 +73,7 @@ gulp.task("sass", () => {
 gulp.task("js", () => {
     let action;
     
-    action = gulp.src(PATH.SRC.JS + "/index.js")
+    action = gulp.src(`${PATH.SRC.JS}/index.js`)
         .pipe(PLUGINS.plumber({
             errorHandler: function(err) {
                 console.log(err);
