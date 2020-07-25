@@ -6,6 +6,10 @@ NAME
 SYNOPSIS
     credlify [--help] [--version] [<args>]
 
+REQUIREMENTS
+    CLI: Node 12.9.0 or higher
+    Generated project: Node 7.9.0 or higher
+
 DESCRIPTION
     Initializes a node project with build pipeline files, directory structure,
     and initial dependencies.

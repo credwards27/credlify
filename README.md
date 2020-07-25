@@ -8,6 +8,11 @@ A simple scaffolding helper for node projects.
 npm install --global credlify
 ```
 
+## Requirements
+
+- **CLI:** Node `12.9.0` or higher
+- **Generated project:** Node `7.9.0` or higher
+
 ## Usage
 
 ```
