@@ -38,7 +38,8 @@ const MinifyPlugin = require("babel-minify-webpack-plugin"),
         },
         
         externals: {
-            jquery: "jQuery"
+            // Place external script references like:
+            // moduleName: "globalName"
         },
         
         mode: "development",
