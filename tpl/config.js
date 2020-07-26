@@ -46,7 +46,7 @@ const CONFIG = {
             if (!group.hasOwnProperty(k) || "ROOT" === k) { continue; }
             
             let path = group[k].replace(/^\/+/, "");
-            group[k] = root + "/" + path;
+            group[k] = `${root}/${path}`;
         }
     }
 })();
