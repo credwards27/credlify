@@ -49,7 +49,7 @@ gulp.task("clean", () => {
 // SASS build task.
 gulp.task("sass", () => {
     let action = gulp.src(`${PATH.SRC.SASS}/index.scss`),
-        sass = PLUGINS.sass,
+        sass = PLUGINS.dartSass,
         sourcemaps = PLUGINS.sourcemaps,
         production = getArg("production");
     
