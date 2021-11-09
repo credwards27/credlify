@@ -51,4 +51,4 @@ const CONFIG = {
     }
 })();
 
-module.exports = CONFIG;
+export default CONFIG;

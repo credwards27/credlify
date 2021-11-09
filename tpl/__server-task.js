@@ -1,9 +1,4 @@
-/* server-task.js
-    
-    Gulp liver server task code.
-*/
 
-module.exports = `
 /* Live reload server.
 */
 gulp.task("server", (done) => {
@@ -18,4 +13,3 @@ gulp.task("server", (done) => {
     
     done();
 });
-`;

@@ -3,11 +3,16 @@
     Webpack configuration.
 */
 
-const MinifyPlugin = require("babel-minify-webpack-plugin"),
-    path = require("path"),
-    getArg = require("./args"),
-    CONFIG = require("./config"),
+import MinifyPlugin from "terser-webpack-plugin";
+import path from "path";
+import { URL } from "url";
+import getArg from "#root/args";
+import CONFIG from "#root/config";
+
+// ES6 module __dirname.
+const __dirname = new URL(".", import.meta.url).pathname.replace(/\/+$/, ""),
     
+    // Webpack config object.
     wp = {
         module: {
             rules: [
@@ -51,15 +56,13 @@ const MinifyPlugin = require("babel-minify-webpack-plugin"),
     if (getArg("production")) {
         wp.mode = "production";
         
-        wp.plugins.push(
-            new MinifyPlugin({
-                // Disable consecutive adds, it makes too many assumptions
-                consecutiveAdds: false
-            }, {})
-        );
+        wp.optimization = {
+            minimize: true,
+            minimizer: [ new MinifyPlugin() ]
+        };
         
         delete wp.devtool;
     }
 })();
 
-module.exports = wp;
+export default wp;

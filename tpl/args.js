@@ -4,19 +4,19 @@
 */
 
 // Dependencies.
-const minimist = require("minimist"),
-    minimistOpts = require("minimist-options"),
-    
-    // Argument configuration.
-    ARG_OPTS = {
-        production: {
-            type: "boolean",
-            default: false
-        }
-    },
-    
-    // Object containing command line arguments.
-    ARGS = getArg();
+import minimist from "minimist";
+import minimistOpts from "minimist-options";
+
+// Argument configuration.
+const ARG_OPTS = {
+    production: {
+        type: "boolean",
+        default: false
+    }
+};
+
+// Object containing command line arguments.
+var ARGS = getArg();
 
 /* Gets one or all command line arguments.
     
@@ -31,4 +31,7 @@ function getArg(arg) {
     return arg ? args[arg] : args;
 }
 
-module.exports = getArg;
+export {
+    getArg as default,
+    ARG_OPTS as args
+};

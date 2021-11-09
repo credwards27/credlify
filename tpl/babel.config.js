@@ -4,11 +4,9 @@
 */
 
 // Dependencies.
-const CONFIG = require("./config");
+import CONFIG from "#root/config";
 
-module.exports = function(api) {
-    api.cache(true);
-    
+export default (api) => {
     return {
         presets: [ "@babel/preset-env" ],
         
@@ -29,4 +27,4 @@ module.exports = function(api) {
         
         sourceType: "unambiguous"
     };
-}
+};

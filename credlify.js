@@ -8,26 +8,31 @@
 "use strict";
 
 // Dependencies.
-const minimist = require("minimist"),
-    minimistOpts = require("minimist-options"),
-    prompts = require("prompts"),
-    uuid = require("uuid").v4,
-    osl = require("oslicense"),
-    fs = require("fs"),
-    path = require("path"),
-    spawn = require("child_process").spawn,
-    promisify = require("util").promisify,
-    
-    readFileAsync = promisify(fs.readFile),
-    writeFileAsync = promisify(fs.writeFile),
-    mkdirAsync = promisify(fs.mkdir),
-    unlinkAsync = promisify(fs.unlink),
+import minimist from "minimist";
+import minimistOpts from "minimist-options";
+import prompts from "prompts";
+import { v4 as uuid } from "uuid";
+import osl from "oslicense";
+import path from "path";
+import { spawn } from "child_process";
+import { URL } from "url";
+import { readFileSync, readdirSync, existsSync, lstatSync } from "fs";
+import {
+    readFile,
+    writeFile,
+    mkdir,
+    unlink,
+    lstat
+} from "fs/promises";
+
+// ES6 module __dirname.
+const __dirname = new URL(".", import.meta.url).pathname.replace(/\/+$/, ""),
     
     // Template directory path.
     TPL_PATH = __dirname + "/tpl",
     
     // Template file paths.
-    TEMPLATES = fs.readdirSync(TPL_PATH).map((file) => {
+    TEMPLATES = readdirSync(TPL_PATH).map((file) => {
         return sanitizeRelPath(file);
     }),
     
@@ -48,7 +53,6 @@ const minimist = require("minimist"),
             "@babel/preset-env",
             "@babel/register",
             "babel-loader",
-            "babel-minify-webpack-plugin",
             "del",
             "gulp",
             "gulp-clean-css",
@@ -59,6 +63,7 @@ const minimist = require("minimist"),
             "live-server",
             "minimist",
             "minimist-options",
+            "terser-webpack-plugin",
             "webpack",
             "webpack-stream"
         ]
@@ -277,7 +282,7 @@ async function copyTemplateFiles(rootPath, input, config, structure) {
         
         // Read the template file
         try {
-            data = await readFileAsync(tplFile, { encoding: "utf8" });
+            data = await readFile(tplFile, { encoding: "utf8" });
         }
         catch (e) {
             // Skip file if a read error occurred
@@ -299,7 +304,7 @@ async function copyTemplateFiles(rootPath, input, config, structure) {
             file = file.replace(/^_/, "");
             destFile = rootPath + "/" + file;
             
-            await writeFileAsync(destFile, data, {
+            await writeFile(destFile, data, {
                 encoding: "utf8",
                 mode: 0o644,
                 flag: "wx"
@@ -335,18 +340,18 @@ async function copyTemplateFiles(rootPath, input, config, structure) {
         
         return Promise.allSettled(
             [
-                writeFileAsync(`${srcJs}/index.js`, "", opts),
+                writeFile(`${srcJs}/index.js`, "", opts),
                 
-                writeFileAsync(`${rootPath}${srcPaths.SASS}/index.scss`, "",
+                writeFile(`${rootPath}${srcPaths.SASS}/index.scss`, "",
                     opts),
                 
-                writeFileAsync(
+                writeFile(
                     `${srcJs}/node_modules/app/.gitkeep`,
                     capturedTemplates[".gitkeep"],
                     opts
                 ),
                 
-                writeFileAsync(
+                writeFile(
                     `${rootPath}${destPaths.ROOT}/index.html`,
                     capturedTemplates["index.html"],
                     opts
@@ -386,13 +391,13 @@ async function createStructure(rootPath, input, config) {
             flag: "wx"
         };
     
-    if (fs.existsSync(srcDir)) {
+    if (existsSync(srcDir)) {
         console.error("Source directory already exists, exiting to avoid " +
             "breaking anything");
         
         process.exit();
     }
-    else if (fs.existsSync(destDir)) {
+    else if (existsSync(destDir)) {
         console.error("Destination directory already exists, exiting to " +
             "avoid breaking anything");
         
@@ -402,18 +407,18 @@ async function createStructure(rootPath, input, config) {
     // Create source and destination root directories
     return Promise.allSettled(
         [
-            mkdirAsync(srcDir, opts),
-            mkdirAsync(destDir, opts)
+            mkdir(srcDir, opts),
+            mkdir(destDir, opts)
         ].map(catchAll)
     )
         .then(() => {
             // Create file type-specific directories
             return Promise.allSettled([
-                    mkdirAsync(`${rootPath}${srcPaths.JS}/node_modules/app`,
+                    mkdir(`${rootPath}${srcPaths.JS}/node_modules/app`,
                         opts),
-                    mkdirAsync(`${rootPath}${srcPaths.SASS}`, opts),
-                    mkdirAsync(`${rootPath}${destPaths.JS}`, opts),
-                    mkdirAsync(`${rootPath}${destPaths.SASS}`, opts)
+                    mkdir(`${rootPath}${srcPaths.SASS}`, opts),
+                    mkdir(`${rootPath}${destPaths.JS}`, opts),
+                    mkdir(`${rootPath}${destPaths.SASS}`, opts)
                 ].map(catchAll)
             );
         })
@@ -493,7 +498,7 @@ async function getConfigData(rootPath, input) {
         data;
     
     try {
-        data = await readFileAsync(`${TPL_PATH}/config.js`, {
+        data = await readFile(`${TPL_PATH}/config.js`, {
             encoding: "utf8"
         });
     }
@@ -506,13 +511,14 @@ async function getConfigData(rootPath, input) {
     data = replaceValues(data, input);
     
     try {
-        await writeFileAsync(uuidConfig, data, {
+        await writeFile(uuidConfig, data, {
             encoding: "utf8",
             mode: 0o644,
             flag: "wx"
         });
         
-        data = require(uuidConfig);
+        data = await import(uuidConfig);
+        data = data.default;
     }
     catch (e) {
         // Temporary config file could not be written
@@ -533,7 +539,7 @@ async function getConfigData(rootPath, input) {
     
     // Clean up
     try {
-        await unlinkAsync(uuidConfig);
+        await unlink(uuidConfig);
     }
     catch (e) {
         console.error(`Temporary config file at '${uuidConfig}' could not be ` +
@@ -586,8 +592,13 @@ function getNearestPkg(filePath) {
     while (dirs.length) {
         let pkg = dirs.join(sep) + `${sep}package.json`;
         
-        if (fs.existsSync(pkg)) {
-            return filePath ? pkg : require(pkg);
+        if (existsSync(pkg)) {
+            if (filePath) {
+                return pkg;
+            }
+            
+            pkg = readFileSync(pkg, { encoding: "utf8" });
+            return JSON.parse(pkg);
         }
         
         dirs.pop();
@@ -614,7 +625,7 @@ function validatePath(msg) {
 /* Shows help text and exits.
 */
 function showHelp() {
-    let text = fs.readFileSync(__dirname + "/help.txt", {
+    let text = readFileSync(__dirname + "/help.txt", {
         encoding: "utf8"
     });
     
@@ -632,7 +643,9 @@ function showHelp() {
     }
     
     if (ARGS.version) {
-        let pkg = require("./package.json");
+        let pkg = __dirname + "/package.json";
+        
+        pkg = JSON.parse(pkg);
         
         console.log(pkg.version);
         process.exit();
@@ -664,14 +677,20 @@ function showHelp() {
     switch (input.serverTask.toLowerCase()) {
         case "y":
         case "yes":
-        input.serverImport = "import liveServer from \"live-server\";";
-        input.serverTask = require("./modules/server-task");
+        input.serverImport = "\nimport liveServer from \"live-server\";";
+        
+        input.serverTask = readFileSync(__dirname + "/tpl/__server-task.js", {
+            encoding: "utf8"
+        });
+        
         input.serverTaskName = ", \"server\"";
         break;
         
         case "n":
         case "no":
+        input.serverImport = "";
         input.serverTask = "";
+        input.serverTaskName = "";
         break;
     }
     
@@ -684,45 +703,44 @@ function showHelp() {
     
     // Make sure no existing files will be overwritten
     for (let i=0, l=TEMPLATES.length; i<l; ++i) {
-        ((file) => {
-            fs.lstat(file, async (err) => {
-                if (!err) {
-                    // Stat succeeded, file exists
-                    exists.push(file);
-                }
+        (async (file) => {
+            try {
+                await lstat(file);
+                exists.push(file);
+            }
+            catch (e) {}
+            
+            if (++checked < numFiles) {
+                // More files to check
+                return;
+            }
+            
+            // All template files checked
+            if (exists.length) {
+                let msg = [
+                    "The following files already exist:\n",
+                    exists.join("\n"),
+                    "\nExiting to avoid breaking anything"
+                ].join("\n");
                 
-                if (++checked < numFiles) {
-                    // More files to check
-                    return;
-                }
+                console.error(msg);
+                process.exit();
+            }
+            
+            // Create the project
+            try {
+                let config = await getConfigData(rootPath, input);
                 
-                // All template files checked
-                if (exists.length) {
-                    let msg = [
-                        "The following files already exist:\n",
-                        exists.join("\n"),
-                        "\nExiting to avoid breaking anything"
-                    ].join("\n");
-                    
-                    console.error(msg);
-                    process.exit();
-                }
-                
-                // Create the project
-                try {
-                    let config = await getConfigData(rootPath, input);
-                    
-                    await createProject(
-                        "/" + sanitizeRelPath(rootPath) + "/",
-                        input,
-                        config
-                    );
-                }
-                catch (e) {
-                    console.error("An unknown error occurred");
-                    process.exit();
-                }
-            });
+                await createProject(
+                    "/" + sanitizeRelPath(rootPath) + "/",
+                    input,
+                    config
+                );
+            }
+            catch (e) {
+                console.error("An unknown error occurred");
+                process.exit();
+            }
         })(TEMPLATES[i]);
     }
 })();

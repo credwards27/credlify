@@ -7,24 +7,32 @@
 
 // Gulp dependencies
 import gulp from "gulp";
-import plugins from "gulp-load-plugins";
+
+import cleanCss from "gulp-clean-css";
+import dartSass from "gulp-dart-sass";
+import sourcemaps from "gulp-sourcemaps";
+import plumber from "gulp-plumber";
 
 import webpack from "webpack";
 import webpackStream from "webpack-stream";
 
-import del from "del";
-%%[serverImport]%%
+import del from "del";%%[serverImport]%%
 
-import CONFIG from "./config";
-import CONFIG_WEBPACK from "./webpack.config";
+import CONFIG from "#root/config";
+import CONFIG_WEBPACK from "#root/webpack.config";
 
-import getArg from "./args";
+import getArg from "#root/args";
 
 // Environment paths.
 const PATH = CONFIG.PATH,
     
     // Gulp plugins collection.
-    PLUGINS = plugins();
+    PLUGINS = {
+        cleanCss,
+        dartSass,
+        sourcemaps,
+        plumber
+    };
 
 //
 // TASKS
