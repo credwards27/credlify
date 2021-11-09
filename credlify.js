@@ -716,15 +716,17 @@ function showHelp() {
             }
             
             // All template files checked
-            if (exists.length) {
-                let msg = [
-                    "The following files already exist:\n",
-                    exists.join("\n"),
-                    "\nExiting to avoid breaking anything"
-                ].join("\n");
-                
-                console.error(msg);
-                process.exit();
+            if (ARGS["dirs"] || ARGS["files"]) {
+                if (exists.length) {
+                    let msg = [
+                        "The following files already exist:\n",
+                        exists.join("\n"),
+                        "\nExiting to avoid breaking anything"
+                    ].join("\n");
+                    
+                    console.error(msg);
+                    process.exit();
+                }
             }
             
             // Create the project
