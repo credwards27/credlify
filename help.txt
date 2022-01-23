@@ -7,8 +7,8 @@ SYNOPSIS
     credlify [--help] [--version] [<args>]
 
 REQUIREMENTS
-    CLI: Node 12.9.0 or higher
-    Generated project: Node 7.9.0 or higher
+    CLI: Node 14.6.0 or higher
+    Generated project: Node 14.6.0 or higher
 
 DESCRIPTION
     Initializes a node project with build pipeline files, directory structure,
@@ -35,10 +35,18 @@ DESCRIPTION
     script will exit.
     
     In an attempt to change as little of the existing project files as possible,
-    credlify will only modify the 'dependencies' and 'devDependencies'
-    properties in package.json. Other properties (such as 'main', 'scripts',
-    etc.) may be changed manually after the project scaffolding has been
-    created.
+    credlify will only modify the following properties in package.json:
+        
+        - 'dependencies'
+        - 'devDependencies'
+        - 'type'
+        - 'imports'
+    
+    This behavior can also be adjusted using the --no-deps and --no-package
+    flags.
+    
+    Other properties (such as 'main', 'scripts', etc.) may be changed manually
+    after the project scaffolding has been created.
 
 OPTIONS
     -h, --help
@@ -56,3 +64,36 @@ OPTIONS
     
     --no-deps
         Prevents initial project dependencies from being installed.
+    
+    --no-package
+        Prevents package.json from being modified. If this option is used, the
+        'type' and 'imports' properties will need to be added manually in order
+        for the generated project to build.
+    
+    --indent <number>
+        When adding the required properties to package.json, this will
+        explicitly specify the number of indentation characters to use per level
+        of indentation in package.json.
+        
+        If omitted, indentation will be detected automatically from
+        package.json. If indentation cannot be detected, it will default to 4
+        spaces.
+        
+        If --no-package is used, --indent will be ignored.
+    
+    --indent-type <type>
+        When adding the required properties to package.json, this will
+        explicitly specify the indentation character to use.
+        
+        If omitted or an invalid value of <type> is provided, the indentation
+        character will be detected automatically from package.json. If
+        indentation character cannot be detected, it will default to spaces.
+        
+        Possible values of <type>:
+            
+            space
+            spaces
+            tab
+            tabs
+        
+        If --no-package is used, --indent-type will be ignored.
