@@ -16,12 +16,13 @@ import osl from "oslicense";
 import path from "path";
 import { spawn } from "child_process";
 import { URL } from "url";
-import { readFileSync, readdirSync, existsSync, lstatSync } from "fs";
+import { readFileSync, readdirSync, existsSync } from "fs";
 import {
     readFile,
     writeFile,
     mkdir,
     unlink,
+    stat,
     lstat
 } from "fs/promises";
 
@@ -69,6 +70,15 @@ const __dirname = new URL(".", import.meta.url).pathname.replace(/\/+$/, ""),
         ]
     },
     
+    // Required config properties for package.json.
+    PACKAGE_CONFIG = {
+        type: "module",
+        imports: {
+            "#app/*": "./src/js/*.js",
+            "#root/*": "./*.js"
+        }
+    },
+    
     // CLI argument configuration.
     ARG_OPTS = {
         help: {
@@ -95,6 +105,21 @@ const __dirname = new URL(".", import.meta.url).pathname.replace(/\/+$/, ""),
         deps: {
             type: "boolean",
             default: true
+        },
+        
+        package: {
+            type: "boolean",
+            default: true
+        },
+        
+        indent: {
+            type: "number",
+            default: 0
+        },
+        
+        "indent-type": {
+            type: "string",
+            default: ""
         }
     },
     
@@ -192,11 +217,60 @@ function sanitizeRelPath(path) {
     
     rootPath - Root project directory path.
     input - User input data for project configuration.
-    config - Project config data from the config.js template file. See
-        getConfigData().
 */
-async function createProject(rootPath, input, config) {
-    let structure;
+async function createProject(rootPath, input) {
+    let pkgMessages, config, structure;
+    
+    // Modify package.json for generated project and to load config file
+    if (ARGS["package"]) {
+        let char = "";
+        
+        switch (ARGS["indent-type"].trim().toLowerCase()) {
+            case "spaces":
+            case "space":
+                char = " ";
+                break;
+            
+            case "tabs":
+            case "tab":
+                char = "\t";
+                break;
+        }
+        
+        try {
+            await configurePackage(ARGS["indent"], char);
+        }
+        catch (e) {
+            console.error("Project package.json modification failed");
+        }
+    }
+    else {
+        console.log("Skipped project package.json modification");
+    }
+    
+    if (ARGS["dirs"] || ARGS["files"]) {
+        // Validate package.json in order to continue
+        pkgMessages = validatePackage();
+        
+        if (pkgMessages.length) {
+            console.error("Project package.json is not configured properly " +
+                "for project generation:\n");
+            
+            console.error(pkgMessages.join("\n\n"));
+            process.exit();
+        }
+        
+        // Get config for provided input arguments and sanitize root path for
+        // subtasks
+        try {
+            config = await getConfigData(rootPath, input);
+        }
+        catch (e) {
+            throw e;
+        }
+        
+        rootPath = `/${sanitizeRelPath(rootPath)}/`;
+    }
     
     // Generate project structure directories
     try {
@@ -240,6 +314,136 @@ async function createProject(rootPath, input, config) {
         console.error("Dependency installation failed");
         process.exit();
     }
+}
+
+/* Updates the package.json file in the target project to add required config
+    properties.
+    
+    indent - Number of characters of type to indent. If falsy or a negative
+        number, this will attempt to detect indentation from the package.json
+        file.
+    
+    char - Indentation character string (must be a space or a tab character. If
+        multiple characters are provided, the first character will be used. If
+        falsy or an invalid character, this will attempt to detect the
+        indentation character from the package.json file.
+*/
+async function configurePackage(indent, char) {
+    switch (true) {
+        case !indent:
+        case typeof indent !== "number":
+        case indent < 0:
+            indent = 0;
+            break;
+    }
+    
+    char = (char && typeof char === "string") ? char[0] : "";
+    char = / |\t/.test(char) ? char : "";
+    
+    let pkgPath = getNearestPkg(true),
+        pkg = getNearestPkg(),
+        hasImports = pkg.hasOwnProperty("imports"),
+        newPkg = {},
+        mode;
+    
+    // Detect current file mode of package.json
+    try {
+        mode = await stat(pkgPath);
+        mode = (mode.mode & parseInt("777", 8));
+    }
+    catch (e) {
+        mode = 0o644;
+    }
+    
+    // Detect indentation amount and character
+    if (!indent || !char) {
+        let indentation = detectIndentation(pkgPath);
+        
+        indent = indent || indentation.indent || 4;
+        char = char || indent.char || " ";
+    }
+    
+    // Add/check required package.json properties
+    for (let k in pkg) {
+        if (!pkg.hasOwnProperty(k)) { continue; }
+        
+        newPkg[k] = pkg[k];
+        
+        switch (k) {
+            case "description":
+                if (!pkg.hasOwnProperty("type")) {
+                    newPkg.type = PACKAGE_CONFIG.type;
+                }
+                
+                break;
+            
+            case "main":
+                let imports = pkg.imports || {};
+                
+                if (imports && typeof imports === "object") {
+                    let configImports = PACKAGE_CONFIG.imports;
+                    
+                    for (let p in configImports) {
+                        if (!configImports.hasOwnProperty(p)) { continue; }
+                        imports[p] = configImports[p];
+                    }
+                }
+                
+                newPkg.imports = imports;
+                break;
+        }
+    }
+    
+    // Save the file
+    newPkg = JSON.stringify(newPkg, null, (" " === char ? indent : char));
+    newPkg = newPkg.trim() + "\n";
+    
+    try {
+        await writeFile(pkgPath, newPkg, {
+            encoding: "utf8",
+            mode: mode,
+            flag: "w"
+        });
+    }
+    catch (e) {}
+}
+
+/* Validates the project package.json file.
+*/
+function validatePackage() {
+    let pkg = getNearestPkg(),
+        configImports = PACKAGE_CONFIG.imports,
+        errors = [];
+    
+    if (pkg.type !== PACKAGE_CONFIG.type) {
+        errors.push(`Package "type" property must be "${PACKAGE_CONFIG.type}"`);
+    }
+    
+    let imports = pkg.imports || {};
+    
+    imports = typeof imports === "object" ? imports : {};
+    
+    for (let k in configImports) {
+        if (!configImports.hasOwnProperty(k)) { continue; }
+        
+        if (!imports[k]) {
+            let msg = [
+                "When running this script, the package \"imports\" must be " +
+                    "an object with the following key/value pairs:\n"
+            ];
+            
+            for (let p in configImports) {
+                if (!configImports.hasOwnProperty(p)) { continue; }
+                
+                msg.push(`    "${p}": "${configImports[p]}"`);
+            }
+            
+            errors.push(msg.join("\n"));
+            break;
+        }
+    }
+    
+    return errors;
 }
 
 /* Copies template files into the project.
@@ -549,6 +753,49 @@ async function getConfigData(rootPath, input) {
     return data;
 }
 
+/* Detects indentation from a file.
+    
+    Indentation is determined by the length of leading whitespace in the first
+    line containing both leading whitespace and at least one non-whitespace
+    character.
+    
+    path - File path.
+    
+    Returns an object in the following format:
+        
+        indent - Number of characters per indentation. If not detected, indent
+            will be 0.
+        
+        char - Detected indentation character. If not detected, char will be an
+            empty string.
+*/
+function detectIndentation(path) {
+    let lines = readFileSync(path, { encoding: "utf8" });
+    
+    lines = lines.split(/\r\n?|\n/);
+    
+    for (let i=0, l=lines.length; i<l; ++i) {
+        let line = lines[i],
+            indentation = line.match(/^(\s+)\S/);
+        
+        indentation = indentation ? indentation[1] : null;
+        
+        if (!indentation) {
+            continue;
+        }
+        
+        return {
+            indent: indentation.length,
+            char: indentation[0]
+        };
+    }
+    
+    return {
+        indent: 0,
+        char: ""
+    };
+}
+
 /* Replaces special placeholders in a string with given values.
     
     str - String containing placeholders. Placeholders must be in the following
@@ -651,8 +898,7 @@ function showHelp() {
         process.exit();
     }
     
-    let rootPath = process.cwd(),
-        projectPkg = getNearestPkg(),
+    let projectPkg = getNearestPkg(),
         numFiles = TEMPLATES.length,
         checked = 0,
         exists = [],
@@ -731,13 +977,7 @@ function showHelp() {
             
             // Create the project
             try {
-                let config = await getConfigData(rootPath, input);
-                
-                await createProject(
-                    "/" + sanitizeRelPath(rootPath) + "/",
-                    input,
-                    config
-                );
+                await createProject(process.cwd(), input);
             }
             catch (e) {
                 console.error("An unknown error occurred");
