@@ -896,9 +896,7 @@ function showHelp() {
     }
     
     if (ARGS.version) {
-        let pkg = __dirname + "/package.json";
-        
-        pkg = JSON.parse(pkg);
+        let pkg = getNearestPkg(false, __dirname);
         
         console.log(pkg.version);
         process.exit();
