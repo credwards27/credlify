@@ -642,21 +642,48 @@ async function createStructure(rootPath, input, config) {
 async function installDeps() {
     console.log("Installing dependencies...");
     
-    let promise;
+    await doInstall(PACKAGES.deps);
+    await doInstall(PACKAGES.devDeps, true);
+}
+
+/* Performs a single NPM install action.
     
-    for (let k in PACKAGES) {
-        if (!PACKAGES.hasOwnProperty(k)) { continue; }
+    packages - Package name string or an array of name strings to install. Any
+        strings containing whitespace will be skipped (leading and trailing
+        whitespace is okay). If no valid packages are provided, no install
+        action will be performed.
+    
+    dev - True to install as 'devDependencies', false to install as
+        'dependencies'. Defaults to false.
+*/
+async function doInstall(packages, dev) {
+    // Filter out invalid package name arguments
+    packages = packages instanceof Array ? packages : [ packages ];
+    
+    packages = packages.map((item) => {
+        item = typeof item === "string" ? item.trim() : "";
         
-        let packages = PACKAGES[k],
-            args = [ "install" ],
-            command, handler;
+        if (!item || item.match(/\s/)) {
+            return null;
+        }
         
-        // Build arguments array
-        args.push("devDeps" === k ? "--save-dev" : "--save");
-        args = args.concat(packages);
-        
+        return item;
+    }).filter(item => !!item);
+    
+    // Exit if no valid packages
+    if (!packages.length) {
+        return;
+    }
+    
+    // Build command
+    let args = [
+        "install",
+        dev ? "--save-dev" : "--save"
+    ].concat(packages);
+    
+    return new Promise((res, rej) => {
         // Run the install command
-        command = spawn(
+        let command = spawn(
             "win32" === process.platform ? "npm.cmd" : "npm",
             args,
             {
@@ -668,25 +695,10 @@ async function installDeps() {
             }
         );
         
-        // Set up promise handler
-        handler = (res) => {
-            command.on("close", (code) => {
-                res(code);
-            });
-        };
-        
-        // Cache or chain the promise
-        if (!promise) {
-            promise = new Promise(handler);
-        }
-        else {
-            promise.then(() => {
-                return new Promise(handler);
-            });
-        }
-    }
-    
-    return promise;
+        command.on("close", (code) => {
+            res(code);
+        });
+    });
 }
 
 /* Loads and returns config.js template file for use in this script.
