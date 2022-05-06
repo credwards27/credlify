@@ -827,14 +827,20 @@ function replaceValues(str, values) {
         instead of the parsed package data, false to return parsed data.
         Defaults to false.
     
+    dir - Alternate directory path to check for the package.json file. If
+        specified, the package file lookup will start in 'dir' instead of the
+        current working directory.
+    
     Returns the package data or file path of the nearest package.json file,
     relative to the current working directory. If no package.json file is found,
     this will return undefined.
 */
-function getNearestPkg(filePath) {
+function getNearestPkg(filePath, dir) {
+    dir = (dir && typeof dir === "string") ? dir : process.cwd();
+    
     // Attempt to get license type from local package.json
     let sep = path.sep,
-        dirs = process.cwd().split(sep);
+        dirs = dir.split(sep);
     
     while (dirs.length) {
         let pkg = dirs.join(sep) + `${sep}package.json`;
