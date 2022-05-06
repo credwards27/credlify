@@ -618,8 +618,7 @@ async function createStructure(rootPath, input, config) {
         .then(() => {
             // Create file type-specific directories
             return Promise.allSettled([
-                    mkdir(`${rootPath}${srcPaths.JS}/node_modules/app`,
-                        opts),
+                    mkdir(`${rootPath}${srcPaths.JS}`, opts),
                     mkdir(`${rootPath}${srcPaths.SASS}`, opts),
                     mkdir(`${rootPath}${destPaths.JS}`, opts),
                     mkdir(`${rootPath}${destPaths.SASS}`, opts)
