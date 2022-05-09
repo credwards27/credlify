@@ -110,4 +110,4 @@ gulp.task(
 gulp.task("w", gulp.parallel("watch"));
 
 // Default gulp task.
-gulp.task("default", gulp.series("build", "watch"%%[serverTaskName]%%));
+gulp.task("default", gulp.series("build", %%[serverTaskName]%%"watch"));

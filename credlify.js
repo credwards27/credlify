@@ -944,7 +944,7 @@ function showHelp() {
             encoding: "utf8"
         });
         
-        input.serverTaskName = ", \"server\"";
+        input.serverTaskName = "\"server\", ";
         break;
         
         case "n":
