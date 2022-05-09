@@ -38,10 +38,10 @@
     "setup"
   ],
   "dependencies": {
-    "minimist": "~1.2.5",
+    "minimist": "~1.2.6",
     "minimist-options": "~4.1.0",
     "oslicense": "~1.2.1",
-    "prompts": "~2.3.2",
-    "uuid": "~8.2.0"
+    "prompts": "~2.4.2",
+    "uuid": "~8.3.2"
   }
 }
