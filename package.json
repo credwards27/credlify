@@ -42,6 +42,6 @@
     "minimist-options": "~4.1.0",
     "oslicense": "~1.2.1",
     "prompts": "~2.4.2",
-    "uuid": "~8.3.2"
+    "uuid": "~14.0.0"
   }
 }
